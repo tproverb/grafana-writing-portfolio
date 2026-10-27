@@ -1,0 +1,23 @@
+---
+- name: Configure a local documentation lab
+  hosts: local
+  gather_facts: true
+
+  vars:
+    lab_directory: "{{ ansible_facts['env']['HOME'] }}/ansible-demo"
+
+  tasks:
+    - name: Ensure the lab directory exists
+      ansible.builtin.file:
+        path: "{{ lab_directory }}"
+        state: directory
+        mode: '0755'
+
+    - name: Ensure the lab configuration has the expected content
+      ansible.builtin.copy:
+        dest: "{{ lab_directory }}/lab.conf"
+        content: |
+          environment=local
+          managed_by=ansible
+          purpose=documentation-portfolio
+        mode: '0644'
