@@ -20,3 +20,9 @@ The tutorial includes prerequisites, tested PowerShell commands, expected result
 [Read the Docker troubleshooting runbook](Docker_Troubleshooting_Runbook.md)
 
 Diagnose and recover from a stopped container, an occupied host port, and invalid startup configuration. Includes tested commands, observed errors, recovery checks, and cleanup.
+
+## Ansible configuration tutorial
+
+[Read the Ansible tutorial](Ansible_Local_Configuration_Tutorial.md)
+
+Configure a local Linux lab, verify repeatability, correct configuration drift, and preview changes before applying them. Includes the tested playbook and inventory.
