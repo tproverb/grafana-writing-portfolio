@@ -1,0 +1,50 @@
+# Documentation quality rules for OpenAPI files in this repository.
+extends: ["spectral:oas"]
+rules:
+  operation-description: error
+  operation-operationId: error
+  operation-tags: error
+  info-contact: error
+
+  operation-summary-required:
+    description: Every operation needs a short summary for navigation.
+    severity: error
+    given: "$.paths[*][get,put,post,delete,patch]"
+    then:
+      field: summary
+      function: truthy
+
+  secured-operations-document-401:
+    description: Operations that require a token must document the 401 Unauthorized response.
+    message: "{{path}} requires authentication but does not document 401."
+    severity: error
+    given: "$.paths[*][?(@.security == null)].responses"
+    then:
+      field: "401"
+      function: truthy
+
+  error-responses-have-description:
+    description: Every 4xx response must explain the cause and the fix.
+    severity: error
+    given: "$.components.responses[*]"
+    then:
+      field: description
+      function: length
+      functionOptions:
+        min: 40
+
+  parameters-have-description:
+    description: Every parameter needs a description.
+    severity: error
+    given: "$..parameters[*]"
+    then:
+      field: description
+      function: truthy
+
+  success-responses-have-example:
+    description: Every 2xx JSON response needs an example.
+    severity: error
+    given: "$.paths[*][*].responses[?(@property.match(/^2/))].content.application/json"
+    then:
+      field: example
+      function: truthy

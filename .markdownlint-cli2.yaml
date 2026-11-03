@@ -1,0 +1,9 @@
+config:
+  default: true
+  MD013: false        # line length: prose is wrapped by the reader
+  MD033: false        # inline HTML allowed for images
+  MD041: false        # first line may be a title block
+  MD024:
+    siblings_only: true  # repeated step headings are allowed in different cases
+ignores:
+  - "node_modules/**"
