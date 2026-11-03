@@ -1,4 +1,4 @@
-﻿# Grafana Writing Portfolio
+# Grafana Writing Portfolio
 
 Technical writing sample by Tim Suleyman.
 
@@ -26,3 +26,11 @@ Diagnose and recover from a stopped container, an occupied host port, and invali
 [Read the Ansible tutorial](Ansible_Local_Configuration_Tutorial.md)
 
 Configure a local Linux lab, verify repeatability, correct configuration drift, and preview changes before applying them. Includes the tested playbook and inventory.
+
+## API documentation and docs CI
+
+- [OpenAPI specification](api/grafana-dashboards.openapi.yaml) for the Grafana health check and dashboard create, list, get, and delete operations
+- [Error reference](docs/API_Error_Reference.md) that separates 400 Bad Request, 401 Unauthorized, 403 Forbidden, 404 Not Found, and 409 Conflict, with the cause and fix for each
+- [Verification script](scripts/Test-GrafanaDashboardApi.ps1) that runs every documented case against the lab and writes the [test record](docs/API_Test_Record.md)
+
+Every pull request runs the [Docs CI workflow](.github/workflows/docs-ci.yml): markdownlint for Markdown style, Spectral for OpenAPI rules (including custom rules that require a documented 401 on secured operations, an example on every success response, and a cause-and-fix description on every error response), and an offline check of internal links.

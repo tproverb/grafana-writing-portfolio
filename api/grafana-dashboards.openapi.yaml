@@ -1,0 +1,367 @@
+openapi: 3.1.0
+info:
+  title: Grafana Dashboard API (portfolio subset)
+  version: 1.0.0
+  summary: Health check and dashboard lifecycle endpoints used in the portfolio lab.
+  description: |
+    A documentation subset of the Grafana HTTP API, written for the local lab
+    described in this repository (Grafana 13.3.0 at http://127.0.0.1:3000).
+
+    It covers the health check and the create, list, get, and delete operations of the
+    `dashboard.grafana.app/v1` API. Status codes follow the Grafana Dashboard API reference.
+    Response bodies marked as lab captures come from the verification script in
+    `scripts/Test-GrafanaDashboardApi.ps1`; see the test record in
+    `docs/API_Error_Reference.md`.
+
+    This file is not an official Grafana specification.
+  contact:
+    name: Tim Suleyman
+    url: https://github.com/tproverb/grafana-writing-portfolio
+  license:
+    name: CC BY 4.0
+    url: https://creativecommons.org/licenses/by/4.0/
+servers:
+  - url: http://127.0.0.1:3000
+    description: Local portfolio lab
+tags:
+  - name: Health
+    description: Service availability checks.
+  - name: Dashboards
+    description: Create, list, read, and delete dashboards.
+security:
+  - serviceAccountToken: []
+paths:
+  /api/health:
+    get:
+      operationId: getHealth
+      tags: [Health]
+      summary: Check Grafana health
+      description: |
+        Returns the database status and the running Grafana version.
+        This endpoint does not require authentication.
+      security: []
+      responses:
+        "200":
+          description: Grafana is running and its database is reachable.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Health"
+              example:
+                database: ok
+                version: 13.3.0
+                commit: 6f8ce3c693b493043ebcd4787566d2b6b118b0f0
+  /apis/dashboard.grafana.app/v1/namespaces/{namespace}/dashboards:
+    parameters:
+      - $ref: "#/components/parameters/Namespace"
+    get:
+      operationId: listDashboards
+      tags: [Dashboards]
+      summary: List dashboards
+      description: |
+        Returns dashboards in the namespace, one page at a time. To read the next page,
+        send the `metadata.continue` value from the previous response as the `continue`
+        parameter. The last page has no `continue` value.
+      parameters:
+        - name: limit
+          in: query
+          description: Maximum number of dashboards to return in one page.
+          schema:
+            type: integer
+            minimum: 1
+          example: 10
+        - name: continue
+          in: query
+          description: Continuation token from the previous page.
+          schema:
+            type: string
+      responses:
+        "200":
+          description: A page of dashboards.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardList"
+              example:
+                kind: DashboardList
+                apiVersion: dashboard.grafana.app/v1
+                metadata: {}
+                items:
+                  - kind: Dashboard
+                    apiVersion: dashboard.grafana.app/v1
+                    metadata:
+                      name: portfolio-lab
+                    spec:
+                      title: Portfolio Lab
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      operationId: createDashboard
+      tags: [Dashboards]
+      summary: Create a dashboard
+      description: |
+        Creates a dashboard. `metadata.name` is the dashboard identifier used in later
+        requests. To let Grafana generate an identifier, send `metadata.generateName`
+        as a prefix instead. To place the dashboard in a folder, set the
+        `grafana.app/folder` annotation to the folder UID.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DashboardInput"
+            example:
+              metadata:
+                name: portfolio-lab
+              spec:
+                title: Portfolio Lab
+                schemaVersion: 41
+      responses:
+        "201":
+          description: The dashboard was created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Dashboard"
+              example:
+                kind: Dashboard
+                apiVersion: dashboard.grafana.app/v1
+                metadata:
+                  name: portfolio-lab
+                  namespace: default
+                spec:
+                  title: Portfolio Lab
+                  schemaVersion: 41
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /apis/dashboard.grafana.app/v1/namespaces/{namespace}/dashboards/{name}:
+    parameters:
+      - $ref: "#/components/parameters/Namespace"
+      - name: name
+        in: path
+        required: true
+        description: The dashboard identifier from `metadata.name`. Do not use `metadata.uid`.
+        schema:
+          type: string
+        example: portfolio-lab
+    get:
+      operationId: getDashboard
+      tags: [Dashboards]
+      summary: Get a dashboard
+      description: Returns one dashboard with its metadata and JSON model.
+      responses:
+        "200":
+          description: The requested dashboard.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Dashboard"
+              example:
+                kind: Dashboard
+                apiVersion: dashboard.grafana.app/v1
+                metadata:
+                  name: portfolio-lab
+                  namespace: default
+                spec:
+                  title: Portfolio Lab
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: deleteDashboard
+      tags: [Dashboards]
+      summary: Delete a dashboard
+      description: Deletes one dashboard. Export the dashboard JSON first if you need to restore it.
+      responses:
+        "200":
+          description: The dashboard was deleted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Status"
+              example:
+                kind: Status
+                apiVersion: v1
+                status: Success
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+components:
+  securitySchemes:
+    serviceAccountToken:
+      type: http
+      scheme: bearer
+      description: |
+        A Grafana service account token sent as `Authorization: Bearer <token>`.
+        Create the service account and token in Administration > Users and access >
+        Service accounts.
+  parameters:
+    Namespace:
+      name: namespace
+      in: path
+      required: true
+      description: The Grafana namespace. The local lab uses `default`.
+      schema:
+        type: string
+      example: default
+  responses:
+    BadRequest:
+      description: |
+        Bad Request. The request body is not valid JSON or a required field is missing
+        or invalid. Fix the request before sending it again; resending it unchanged
+        returns the same error.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Status"
+    Unauthorized:
+      description: |
+        Unauthorized. The request has no token, or Grafana does not accept the token
+        (for example, it was revoked or mistyped). Send a valid service account token.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Status"
+    Forbidden:
+      description: |
+        Forbidden. Grafana accepted the token, but the service account lacks the
+        permission for this action. Grant the role or permission; changing the token
+        alone does not help.
+        In the lab (Grafana 13.3.0), an Editor service account also received 403
+        when it read a dashboard it had created at the root level. Creating the
+        dashboard in a folder where the service account has Edit permission fixed it.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Status"
+    NotFound:
+      description: Not Found. No dashboard with this `metadata.name` exists in the namespace.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Status"
+    Conflict:
+      description: |
+        Conflict. A dashboard with the same `metadata.name` already exists. Choose another
+        name, or use `metadata.generateName`.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Status"
+  schemas:
+    Health:
+      type: object
+      required: [database, version]
+      properties:
+        database:
+          type: string
+          description: Database status. `ok` means the database is reachable.
+        version:
+          type: string
+          description: Running Grafana version.
+        commit:
+          type: string
+          description: Source commit of the running build.
+    ObjectMeta:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Dashboard identifier used in request paths.
+        generateName:
+          type: string
+          description: Prefix for a generated name. Use instead of `name`.
+        namespace:
+          type: string
+        uid:
+          type: string
+          description: Internal object UID. Not used in request paths.
+        resourceVersion:
+          type: string
+        generation:
+          type: integer
+        annotations:
+          type: object
+          additionalProperties:
+            type: string
+          description: Set `grafana.app/folder` to a folder UID to place the dashboard in that folder.
+    DashboardInput:
+      type: object
+      required: [metadata, spec]
+      properties:
+        metadata:
+          $ref: "#/components/schemas/ObjectMeta"
+        spec:
+          $ref: "#/components/schemas/DashboardSpec"
+    DashboardSpec:
+      type: object
+      description: The dashboard JSON model.
+      required: [title]
+      properties:
+        title:
+          type: string
+        schemaVersion:
+          type: integer
+      additionalProperties: true
+    Dashboard:
+      type: object
+      properties:
+        kind:
+          type: string
+        apiVersion:
+          type: string
+        metadata:
+          $ref: "#/components/schemas/ObjectMeta"
+        spec:
+          $ref: "#/components/schemas/DashboardSpec"
+    DashboardList:
+      type: object
+      properties:
+        kind:
+          type: string
+        apiVersion:
+          type: string
+        metadata:
+          type: object
+          properties:
+            continue:
+              type: string
+              description: Token for the next page. Absent on the last page.
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Dashboard"
+    Status:
+      type: object
+      description: Result object returned for deletions and errors.
+      properties:
+        kind:
+          type: string
+        apiVersion:
+          type: string
+        status:
+          type: string
+          description: "`Success` or `Failure`."
+        message:
+          type: string
+          description: Human-readable explanation.
+        reason:
+          type: string
+          description: Machine-readable cause, when Grafana provides one.
+        code:
+          type: integer
+          description: HTTP status code.
