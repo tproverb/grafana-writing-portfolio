@@ -241,6 +241,9 @@ components:
         Forbidden. Grafana accepted the token, but the service account lacks the
         permission for this action. Grant the role or permission; changing the token
         alone does not help.
+        In the lab (Grafana 13.3.0), an Editor service account also received 403
+        when it read a dashboard it had created at the root level. Creating the
+        dashboard in a folder where the service account has Edit permission fixed it.
       content:
         application/json:
           schema:
